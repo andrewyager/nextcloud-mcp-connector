@@ -167,7 +167,7 @@ jobs:
       - name: Bootstrap apps, users, calendar and address book
         run: bash scripts/bootstrap_test_nc.sh
       - name: Install locked environment
-        run: uv sync --frozen
+        run: uv sync --frozen --extra documents
       - name: Integration tests against Nextcloud
         run: |
           set -a && . ./.env.test && set +a

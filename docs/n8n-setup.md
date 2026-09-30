@@ -200,7 +200,7 @@ For "answer a question over my Nextcloud", use an **AI Agent** node with a chat 
 
 Two settings matter more than they look:
 
-* **Limit the tools.** The sub-node has an include and exclude list. 22 tool descriptions are
+* **Limit the tools.** The sub-node has an include and exclude list. 23 tool descriptions are
   context the model pays for on every turn, and an agent that only files meeting notes needs
   `notes_create` and `files_list`, not the Talk family.
 * **`prepare_context` first.** This connector has one tool that bundles the usual "what is

@@ -26,7 +26,7 @@ dependencies = [
 
 [project.optional-dependencies]
 # Office and PDF to Markdown for files_read_as_markdown (TOOL-14). Optional for standalone
-# installs; the ExApp image always carries it. All four are MIT or BSD-3 and pure Python.
+# installs; the ExApp image always carries it. All four are MIT or BSD-3 licensed; python-pptx pulls in Pillow and XlsxWriter.
 documents = [
     "python-docx>=1.2,<2",
     "openpyxl>=3.1,<4",

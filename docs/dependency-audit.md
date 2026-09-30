@@ -253,3 +253,26 @@ nextcloud-mcp-connector v0.2.1
 ├── pyjwt[crypto] v2.14.0
 │   └── cryptography v50.0.1 (extra: crypto) (*)
 ```
+
+## The documents extra
+
+Four parsers behind `files_read_as_markdown`, installed only with the extra `documents`:
+
+| Package | Version | Licence | Reads |
+|---|---|---|---|
+| python-docx | >=1.2,<2 | MIT | DOCX through lxml |
+| openpyxl | >=3.1,<4 | MIT | XLSX through et_xmlfile on the standard library parser |
+| python-pptx | >=1.0,<2 | MIT | PPTX through lxml; pulls Pillow and XlsxWriter |
+| pypdf | >=6.19,<7 | BSD-3 | PDF, pure Python |
+
+What stands in front of them: the source size cap of 25 MiB is checked from the DAV stat
+before any download. The three Office formats are zip containers and are checked against their
+own central directory before inflation: at most 2000 entries, at most 200 MiB declared in
+total, and no entry above 10 MiB compressed beyond 100:1. lxml refuses huge trees by default
+and `huge_tree` is never enabled. No converter touches the network. Every parser exception
+is mapped to one refusal that names the file and the format; the exception itself is logged
+at DEBUG only.
+
+Pillow arrives through python-pptx and is not used by this server; it is imported by
+python-pptx and decodes nothing here, because images are dropped without being opened. It is
+listed so the next audit does not have to find out why it is in the lock.

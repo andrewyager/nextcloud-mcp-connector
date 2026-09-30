@@ -14,6 +14,8 @@ import re
 from collections.abc import Iterable
 from typing import Any
 
+from .limits import Output
+
 __all__ = ["MAX_TABLE_COLS", "MAX_TABLE_ROWS", "to_markdown"]
 
 MAX_TABLE_COLS = 256
@@ -73,8 +75,10 @@ def to_markdown(data: bytes) -> str:
 
     document = docx.Document(io.BytesIO(data))
     style_names = {style.style_id: style.name or "" for style in document.styles}
-    out: list[str] = []
+    out = Output()
     for block in document.iter_inner_content():
+        if out.full:
+            break
         if isinstance(block, Paragraph):
             text = block.text.strip()
             if not text:
@@ -84,13 +88,13 @@ def to_markdown(data: bytes) -> str:
             style = style_names.get(style_id, "") if style_id else ""
             prefix = _heading_prefix(style)
             if prefix:
-                out.append(f"{prefix} {text}")
+                out.add(f"{prefix} {text}")
             elif style.startswith("List"):
-                out.append(f"- {text}")
+                out.add(f"- {text}")
             else:
-                out.append(text)
-            out.append("")
+                out.add(text)
+            out.add("")
         elif isinstance(block, Table):
             out.extend(_table_lines_capped(block))
-            out.append("")
-    return "\n".join(out).strip() + "\n"
+            out.add("")
+    return out.text()

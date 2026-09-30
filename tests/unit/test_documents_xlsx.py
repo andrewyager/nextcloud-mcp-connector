@@ -9,6 +9,7 @@ from pathlib import Path
 import openpyxl
 import pytest
 
+from mcp_connector.documents import limits
 from mcp_connector.documents import xlsx as xlsx_conv
 from mcp_connector.errors import REASON_GUARD_TRIPPED, ToolError
 
@@ -144,3 +145,12 @@ def test_too_many_sheets_are_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(ToolError) as info:
         xlsx_conv.to_markdown(buffer.getvalue())
     assert info.value.reason == REASON_GUARD_TRIPPED
+
+
+def test_the_output_stops_at_the_cap_with_a_note(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(limits, "MAX_OUTPUT_CHARS", 40)
+    text = xlsx_conv.to_markdown(FIXTURE.read_bytes())
+    body, _, note = text.rstrip("\n").rpartition("\n")
+    assert note == "(output truncated at 40 characters)"
+    assert len(body.rstrip("\n")) <= 40
+    assert "## Appendix" not in text

@@ -13,6 +13,7 @@ import io
 from typing import Any
 
 from ..errors import REASON_GUARD_TRIPPED, ToolError
+from .limits import Output
 
 __all__ = ["MAX_COLS", "MAX_ROWS", "MAX_SHEETS", "to_markdown"]
 
@@ -88,9 +89,11 @@ def to_markdown(data: bytes) -> str:
                 hint="Split the workbook, or use files_download for the raw file.",
                 reason=REASON_GUARD_TRIPPED,
             )
-        out: list[str] = []
+        out = Output()
         for sheet in sheets:
+            if out.full:
+                break
             out.extend(_sheet_markdown(sheet))
     finally:
         workbook.close()
-    return "\n".join(out).strip() + "\n"
+    return out.text()

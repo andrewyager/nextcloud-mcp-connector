@@ -12,6 +12,7 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
 from mcp_connector.documents import docx as docx_conv
+from mcp_connector.documents import limits
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "documents" / "sample.docx"
 
@@ -107,3 +108,12 @@ def test_twenty_thousand_paragraphs_convert_quickly() -> None:
     assert text.startswith("# Top\n")
     assert text.count("line") == 20000
     assert elapsed < 2
+
+
+def test_the_output_stops_at_the_cap_with_a_note(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(limits, "MAX_OUTPUT_CHARS", 40)
+    text = docx_conv.to_markdown(FIXTURE.read_bytes())
+    body, _, note = text.rstrip("\n").rpartition("\n")
+    assert note == "(output truncated at 40 characters)"
+    assert len(body.rstrip("\n")) <= 40
+    assert text.startswith("# Quarterly Report")

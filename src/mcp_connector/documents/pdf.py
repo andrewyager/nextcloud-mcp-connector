@@ -3,6 +3,7 @@
 import io
 
 from ..errors import REASON_GUARD_TRIPPED, ToolError
+from .limits import Output
 
 __all__ = ["MAX_PAGES", "to_markdown"]
 
@@ -27,17 +28,18 @@ def to_markdown(data: bytes) -> str:
             hint="Split the document, or use files_download for the raw file.",
             reason=REASON_GUARD_TRIPPED,
         )
-    out: list[str] = []
+    out = Output()
     any_text = False
     for number, page in enumerate(reader.pages, start=1):
+        if out.full:
+            break
         text = (page.extract_text() or "").strip()
         any_text = any_text or bool(text)
-        out.append(f"## Page {number}")
-        out.append("")
+        out.add(f"## Page {number}")
+        out.add("")
         if text:
-            out.append(text)
-            out.append("")
+            out.add(text)
+            out.add("")
     if not any_text:
-        out.insert(0, _NO_TEXT)
-        out.insert(1, "")
-    return "\n".join(out).strip() + "\n"
+        return f"{_NO_TEXT}\n\n{out.text()}"
+    return out.text()

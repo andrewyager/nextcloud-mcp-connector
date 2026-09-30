@@ -6,6 +6,7 @@ from pathlib import Path
 import pypdf
 import pytest
 
+from mcp_connector.documents import limits
 from mcp_connector.documents import pdf as pdf_conv
 from mcp_connector.errors import REASON_GUARD_TRIPPED, ToolError
 
@@ -57,3 +58,12 @@ def test_too_many_pages_are_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(ToolError) as info:
         pdf_conv.to_markdown(_blank_pdf(4))
     assert info.value.reason == REASON_GUARD_TRIPPED
+
+
+def test_the_output_stops_at_the_cap_with_a_note(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(limits, "MAX_OUTPUT_CHARS", 40)
+    text = pdf_conv.to_markdown(FIXTURE.read_bytes())
+    body, _, note = text.rstrip("\n").rpartition("\n")
+    assert note == "(output truncated at 40 characters)"
+    assert len(body.rstrip("\n")) <= 40
+    assert "## Page 2" not in text

@@ -27,9 +27,11 @@ def to_markdown(data: bytes) -> str:
                 continue
             if isinstance(shape, Shape) and shape.has_text_frame:
                 for paragraph in shape.text_frame.paragraphs:
-                    text = "".join(run.text for run in paragraph.runs).strip()
-                    if text:
-                        out.add(text)
+                    # paragraph.text writes a soft line break as a vertical tab, which
+                    # splitlines treats as a line boundary.
+                    for line in paragraph.text.splitlines():
+                        if line.strip():
+                            out.add(line.strip())
                 if shape.text_frame.text.strip():
                     out.add("")
             elif isinstance(shape, GraphicFrame) and shape.has_table:

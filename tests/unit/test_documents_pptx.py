@@ -1,8 +1,11 @@
 """PowerPoint to Markdown: a heading per slide, text frames, tables, speaker notes."""
 
+import io
 from pathlib import Path
 
+import pptx
 import pytest
+from pptx.util import Inches
 
 from mcp_connector.documents import limits
 from mcp_connector.documents import pptx as pptx_conv
@@ -34,3 +37,20 @@ def test_the_output_stops_at_the_cap_with_a_note(monkeypatch: pytest.MonkeyPatch
     assert note == "(output truncated at 40 characters)"
     assert len(body.rstrip("\n")) <= 40
     assert "## Slide 2" not in text
+
+
+def test_a_soft_line_break_gives_two_lines() -> None:
+    presentation = pptx.Presentation()
+    slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+    box = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(3), Inches(1))
+    paragraph = box.text_frame.paragraphs[0]
+    paragraph.add_run().text = "Line one"
+    paragraph.add_line_break()
+    paragraph.add_run().text = "Line two"
+    buffer = io.BytesIO()
+    presentation.save(buffer)
+
+    lines = pptx_conv.to_markdown(buffer.getvalue()).splitlines()
+    assert "Line one" in lines
+    assert "Line two" in lines
+    assert not any("Line oneLine two" in line for line in lines)

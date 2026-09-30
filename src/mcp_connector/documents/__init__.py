@@ -7,21 +7,26 @@ package together:
   function, so this package imports without the ``documents`` extra, and a missing library
   becomes one refusal that names the install command instead of an import error at start.
 * **No parser exception reaches a client.** Whatever a library raises on a damaged or
-  hostile file is mapped to one refusal that names the file and the format. The class and
-  message are logged at DEBUG only: they describe the file, and the file is the user's.
+  hostile file is mapped to one refusal that names the file and the format. Only the
+  exception class is logged, at DEBUG: the message describes the file, and the file is the
+  user's.
 
-Conversion is CPU work on sync libraries, so :func:`convert` runs it in a worker thread with
-``asyncio.to_thread``, the pattern of ``oauth/store.py``. A thread cannot be cancelled; the
-guards in ``zipguard`` and in the converters are the protection against a long conversion.
+Conversion is CPU work on sync libraries, so :func:`convert` runs it in a worker thread. It
+uses its own pool of two threads and not the default executor: the token and audit stores
+share the default executor, and a slow conversion must not delay them. The pool holds no
+data between calls. A thread cannot be cancelled; the guards in ``zipguard``, the caps in
+the converters and the output cap in ``limits`` are the protection against a long conversion.
 """
 
 import asyncio
+import functools
 import logging
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 from ..errors import ToolError
-from . import detect, zipguard
+from . import detect, docx, pdf, pptx, xlsx, zipguard
 
 __all__ = ["INSTALL_HINT", "MAX_SOURCE_BYTES", "Converted", "convert", "convert_sync"]
 
@@ -36,6 +41,8 @@ INSTALL_HINT = (
 
 _OFFICE = frozenset({"docx", "xlsx", "pptx"})
 
+_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="documents")
+
 
 @dataclass(frozen=True)
 class Converted:
@@ -44,18 +51,14 @@ class Converted:
 
 
 def _converter(fmt: str) -> Callable[[bytes], str]:
-    # Imported here and not at module level for the same reason the libraries are: the
-    # converter modules are cheap, but keeping the lookup next to the ImportError handling
-    # makes the one place where a missing library surfaces easy to find.
+    # Looked up at call time, so a test can replace one converter's to_markdown.
     if fmt == "docx":
-        from .docx import to_markdown
-    elif fmt == "xlsx":
-        from .xlsx import to_markdown
-    elif fmt == "pptx":
-        from .pptx import to_markdown
-    else:
-        from .pdf import to_markdown
-    return to_markdown
+        return docx.to_markdown
+    if fmt == "xlsx":
+        return xlsx.to_markdown
+    if fmt == "pptx":
+        return pptx.to_markdown
+    return pdf.to_markdown
 
 
 def convert_sync(data: bytes, content_type: str, name: str) -> Converted:
@@ -84,5 +87,6 @@ def convert_sync(data: bytes, content_type: str, name: str) -> Converted:
 
 
 async def convert(data: bytes, content_type: str, name: str) -> Converted:
-    """Convert in a worker thread so the event loop keeps serving other calls."""
-    return await asyncio.to_thread(convert_sync, data, content_type, name)
+    """Convert in the documents pool so the event loop keeps serving other calls."""
+    call = functools.partial(convert_sync, data, content_type, name)
+    return await asyncio.get_running_loop().run_in_executor(_EXECUTOR, call)

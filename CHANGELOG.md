@@ -16,8 +16,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `files_read_as_markdown` reads DOCX, XLSX, PPTX and PDF files as Markdown, in slices with a
   next offset like `files_read`. The parsers ship as the optional extra `documents`; the ExApp
   image carries it. An Office file is checked against its own directory listing before anything
-  is inflated, a PDF above 500 pages and a workbook above 50 sheets are refused, and an encrypted
-  PDF is refused rather than attempted (TOOL-14).
+  is inflated, with at most 50 MiB declared in total. A PDF above 500 pages and a workbook above
+  50 sheets are refused. A sheet or a Word table gives at most 256 columns and 10000 rows, and the
+  Markdown of one file stops at 8388608 characters with a note. A PDF with only an owner password
+  opens; a PDF that needs a user password is refused (TOOL-14).
 
 ### Fixed
 

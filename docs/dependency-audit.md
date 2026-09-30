@@ -261,17 +261,28 @@ Four parsers behind `files_read_as_markdown`, installed only with the extra `doc
 | Package | Version | Licence | Reads |
 |---|---|---|---|
 | python-docx | >=1.2,<2 | MIT | DOCX through lxml |
-| openpyxl | >=3.1,<4 | MIT | XLSX through et_xmlfile on the standard library parser |
+| openpyxl | >=3.1,<4 | MIT | XLSX: parts through lxml, sheets and shared strings through expat |
 | python-pptx | >=1.0,<2 | MIT | PPTX through lxml; pulls Pillow and XlsxWriter |
 | pypdf | >=6.19,<7 | BSD-3 | PDF, pure Python |
 
-What stands in front of them: the source size cap of 25 MiB is checked from the DAV stat
-before any download. The three Office formats are zip containers and are checked against their
-own central directory before inflation: at most 2000 entries, at most 200 MiB declared in
-total, and no entry above 10 MiB compressed beyond 100:1. lxml refuses huge trees by default
-and `huge_tree` is never enabled. No converter touches the network. Every parser exception
-is mapped to one refusal that names the file and the format; the exception itself is logged
-at DEBUG only.
+openpyxl parses the workbook parts with lxml and `resolve_entities=False` when lxml is
+installed. It reads sheets and shared strings with `iterparse` from the standard library
+(expat). et_xmlfile is its writer and reads nothing here.
+
+The guards come before and after the parsers. The DAV stat must show at most 25 MiB before
+the download. The download itself stops one byte after 25 MiB, and a longer body is refused.
+The three Office formats are zip containers. The guard reads their central directory before it
+inflates anything. It allows at most 2000 entries and at most 50 MiB declared in total. It
+also refuses an entry above 10 MiB that is compressed beyond 100:1.
+
+lxml's default parser limits nesting depth and the size of one text node. It does not limit
+the size of the document, and `huge_tree` is never enabled. A DOM costs several times the size
+of its XML. For this reason the declared total is 50 MiB, and the converters have their own
+caps. A sheet gives at most 256 columns and 10000 rows. A Word table gives at most 256 columns
+and 10000 rows. The Markdown of one file stops at 8388608 characters with a note.
+
+No converter touches the network. Every parser exception becomes one refusal that names the
+file and the format. Only the exception class is logged, at DEBUG.
 
 Pillow arrives through python-pptx and is not used by this server; it is imported by
 python-pptx and decodes nothing here, because images are dropped without being opened. It is

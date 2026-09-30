@@ -19,7 +19,7 @@ _BY_TYPE: dict[str, str] = {
     "application/pdf": "pdf",
 }
 
-_BY_SUFFIX: dict[str, str] = {".docx": "docx", ".xlsx": "xlsx", ".pptx": "pptx", ".pdf": "pdf"}
+_BY_SUFFIX: dict[str, str] = {f".{fmt}": fmt for fmt in FORMATS}
 
 # Not refused because they are dangerous to read, but because none of the four libraries
 # reads them: the macro variants carry a different package layout and the legacy binary

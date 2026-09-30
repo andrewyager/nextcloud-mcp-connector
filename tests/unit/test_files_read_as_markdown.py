@@ -188,3 +188,23 @@ async def test_files_read_keeps_the_download_hint_for_other_binaries(clients: Nc
             await files_tools.read(clients, path="/Docs/sample.docx")
     assert "files_download" in info.value.hint
     assert "files_read_as_markdown" not in info.value.hint
+
+
+@pytest.mark.anyio
+async def test_a_body_larger_than_the_stat_size_is_refused_after_download(
+    clients: NcClients, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(documents, "MAX_SOURCE_BYTES", 100)
+    with respx.mock(assert_all_called=True) as mock:
+        mock.route(method="PROPFIND", url=DOC_URL).mock(
+            return_value=httpx.Response(207, text=_propfind(length=10, content_type=DOCX))
+        )
+        get = mock.route(method="GET", url=DOC_URL).mock(
+            return_value=httpx.Response(200, content=b"x" * 101)
+        )
+        with pytest.raises(ToolError) as info:
+            await files_tools.read_as_markdown(clients, path="/Docs/sample.docx")
+
+    assert get.calls.last.request.headers["Range"] == "bytes=0-100"
+    assert info.value.reason == REASON_GUARD_TRIPPED
+    assert "files_download" in info.value.hint

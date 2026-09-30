@@ -304,6 +304,16 @@ async def read(
     return result
 
 
+def _source_too_large(target: str, size: int | None) -> ToolError:
+    """The size-cap refusal. ``None`` means the body was cut at the cap, so no size is known."""
+    shown = "larger than" if size is None else f"{size} bytes, above"
+    return ToolError(
+        message=f"{target} is {shown} the {documents.MAX_SOURCE_BYTES} byte cap.",
+        hint="Use files_download to retrieve the raw file in chunks.",
+        reason=REASON_GUARD_TRIPPED,
+    )
+
+
 async def read_as_markdown(
     clients: NcClients,
     path: str,
@@ -345,13 +355,15 @@ async def read_as_markdown(
     document_detect.detect(content_type, target)
     size = int(info["size"])
     if size > documents.MAX_SOURCE_BYTES:
-        raise ToolError(
-            message=f"{target} is {size} bytes, above the {documents.MAX_SOURCE_BYTES} byte cap.",
-            hint="Use files_download to retrieve the raw file in chunks.",
-            reason=REASON_GUARD_TRIPPED,
-        )
+        raise _source_too_large(target, size)
 
-    data = await dav.get_range(clients.client, clients.creds, target)
+    # The stat size is a claim, not a limit: the file can grow between PROPFIND and GET.
+    # Ask for one byte more than the cap, so a body above it is visible and refused.
+    data = await dav.get_range(
+        clients.client, clients.creds, target, limit=documents.MAX_SOURCE_BYTES + 1
+    )
+    if len(data) > documents.MAX_SOURCE_BYTES:
+        raise _source_too_large(target, None)
     converted = await documents.convert(data, content_type, target)
     markdown = converted.markdown
     length = len(markdown)

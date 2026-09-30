@@ -14,7 +14,9 @@ from ..errors import REASON_GUARD_TRIPPED, ToolError
 __all__ = ["MAX_ENTRIES", "MAX_RATIO", "MAX_TOTAL_BYTES", "RATIO_FLOOR_BYTES", "check"]
 
 MAX_ENTRIES = 2000
-MAX_TOTAL_BYTES = 200 * 1024 * 1024
+#: lxml builds a DOM several times the size of the XML, so the declared total is the memory
+#: bound. 50 MiB is still far beyond any real Office document.
+MAX_TOTAL_BYTES = 50 * 1024 * 1024
 MAX_RATIO = 100
 #: The ratio rule applies above this declared size only. Office XML is small and compresses
 #: far better than 100:1 in places, and refusing it would refuse ordinary documents.

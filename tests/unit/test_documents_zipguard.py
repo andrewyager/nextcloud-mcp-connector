@@ -30,9 +30,15 @@ def test_too_many_entries_are_refused_before_inflation() -> None:
     assert "/Docs/a.docx" in info.value.message
 
 
+def test_the_declared_total_cap_is_50_mib() -> None:
+    # lxml builds a DOM several times the size of the XML; 50 MiB declared is still far
+    # beyond any real Office document.
+    assert zipguard.MAX_TOTAL_BYTES == 50 * 1024 * 1024
+
+
 def test_an_oversize_declared_total_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     # The guard reads declared sizes, so a small real archive with a patched ceiling
-    # proves the comparison without writing 200 MiB to disk.
+    # proves the comparison without writing 50 MiB to disk.
     monkeypatch.setattr(zipguard, "MAX_TOTAL_BYTES", 10)
     data = _zip({"word/document.xml": b"x" * 11})
     with pytest.raises(ToolError) as info:

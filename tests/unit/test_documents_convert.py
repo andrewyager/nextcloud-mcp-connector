@@ -54,11 +54,18 @@ def test_a_parser_exception_becomes_one_refusal_naming_file_and_format(
     assert "Open the file in Nextcloud" in info.value.hint
 
 
-def test_a_guard_refusal_passes_through_unchanged() -> None:
+def test_a_guard_refusal_passes_through_unchanged(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def refuse(_data: bytes) -> str:
+        raise ToolError(message="x", hint="y", reason=REASON_GUARD_TRIPPED)
+
+    monkeypatch.setattr(docx_conv, "to_markdown", refuse)
     with pytest.raises(ToolError) as info:
-        documents.convert_sync(b"%PDF-1.4 garbage", "application/pdf", "/Docs/a.pdf")
-    # A parser failure, not a guard: the reason stays unspecified.
-    assert info.value.reason != REASON_GUARD_TRIPPED
+        documents.convert_sync((FIXTURES / "sample.docx").read_bytes(), DOCX, "/Docs/a.docx")
+    assert info.value.message == "x"
+    assert info.value.hint == "y"
+    assert info.value.reason == REASON_GUARD_TRIPPED
 
 
 def test_without_the_extra_the_refusal_names_the_install_command(

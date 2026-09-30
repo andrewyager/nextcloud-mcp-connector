@@ -18,7 +18,7 @@ jobs:
         with:
           enable-cache: true
       - name: Install locked environment
-        run: uv sync --frozen
+        run: uv sync --frozen --extra documents
       # ruff runs over the whole repository, not over src: a lint gate that only sees the
       # package lets scripts, tests and the whitelist rot.
       - name: Lint

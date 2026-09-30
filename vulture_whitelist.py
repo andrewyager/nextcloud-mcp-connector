@@ -21,6 +21,7 @@ files_list
 files_read
 files_upload
 files_download
+files_read_as_markdown
 calendar_list_events
 calendar_create_event
 notes_search
@@ -68,12 +69,9 @@ _.client_id_metadata_document_supported
 #   client.py. deck_browse reaches boards through get_boards, so the singular form currently
 #   has no production caller. It stays because it is the only place that knows the shape of
 #   the single board route, and it costs eight lines.
-# read_as_markdown: the files_read_as_markdown tool function; the registration that calls it
-#   lands in the next task of the same feature.
 deck_api_versions
 NSMAP
 get_board
-read_as_markdown
 
 # --- The transport layer of the Tables family (plan 08-02, dissolved in plan 08-03) -----
 # Empty on purpose, and that is the rule of this file at work rather than an omission. Plan

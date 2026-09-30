@@ -11,6 +11,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `files_read_as_markdown` reads DOCX, XLSX, PPTX and PDF files as Markdown, in slices with a
+  next offset like `files_read`. The parsers ship as the optional extra `documents`; the ExApp
+  image carries it. An Office file is checked against its own directory listing before anything
+  is inflated, a PDF above 500 pages and a workbook above 50 sheets are refused, and an encrypted
+  PDF is refused rather than attempted (TOOL-14).
+
 ### Fixed
 
 - `occ mcp_connector:exchange:check` is registered again. Its description was 325 characters,

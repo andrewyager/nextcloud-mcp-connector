@@ -234,6 +234,26 @@ async def test_a_file_id_is_resolved_to_a_path_and_read(clients: NcClients) -> N
 
 
 @pytest.mark.anyio
+async def test_a_docx_file_id_points_at_files_read_as_markdown(clients: NcClients) -> None:
+    """fetch reads text only; for a Word file the way out is the Markdown converter."""
+    docx_path = "/Dokumente/Budget 2026.docx"
+    docx_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    with respx.mock(assert_all_called=True) as mock:
+        mock.route(method="SEARCH", url=DAV_ROOT).mock(
+            return_value=httpx.Response(207, text=search_body(path=docx_path))
+        )
+        mock.route(method="PROPFIND", url=f"{FILES_ROOT}{docx_path}").mock(
+            return_value=httpx.Response(
+                207, text=stat_body(length=5000, path=docx_path, content_type=docx_type)
+            )
+        )
+        with pytest.raises(ToolError) as info:
+            await chatgpt.fetch(clients, "file:4711")
+
+    assert "files_read_as_markdown" in info.value.hint
+
+
+@pytest.mark.anyio
 async def test_a_long_file_is_cut_and_says_so_in_the_text_and_in_the_metadata(
     clients: NcClients, monkeypatch: pytest.MonkeyPatch
 ) -> None:

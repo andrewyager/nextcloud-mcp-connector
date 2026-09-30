@@ -1,6 +1,6 @@
 """The dispatcher: format to converter, the extra-missing refusal, one error for any parser."""
 
-import importlib
+import subprocess
 import sys
 import threading
 from pathlib import Path
@@ -83,16 +83,21 @@ def test_without_the_extra_the_refusal_names_the_install_command(
     assert "nextcloud-mcp-connector[documents]" in info.value.hint
 
 
-def test_the_package_imports_without_the_extra(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    for name in ("docx", "openpyxl", "pptx", "pypdf", "mcp_connector.documents"):
-        monkeypatch.delitem(sys.modules, name, raising=False)
-    for name in ("docx", "openpyxl", "pptx", "pypdf"):
-        monkeypatch.setitem(sys.modules, name, None)
-
-    module = importlib.import_module("mcp_connector.documents")
-    assert hasattr(module, "convert")
+def test_the_package_imports_without_the_extra() -> None:
+    # A fresh interpreter is the honest test: re-importing in this process would replace
+    # mcp_connector.documents under the other tests. None in sys.modules makes the import
+    # of each library raise ImportError, which is what a missing package does.
+    code = (
+        "import sys\n"
+        "for name in ('docx', 'openpyxl', 'pptx', 'pypdf'):\n"
+        "    sys.modules[name] = None\n"
+        "import mcp_connector.documents as documents\n"
+        "assert hasattr(documents, 'convert')\n"
+    )
+    result = subprocess.run(  # noqa: S603 - fixed command, the code is a constant
+        [sys.executable, "-c", code], capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_the_conversion_executor_has_two_workers() -> None:

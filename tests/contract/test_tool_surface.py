@@ -142,16 +142,26 @@ async def test_files_upload_is_annotated_as_create_only() -> None:
 
 
 @pytest.mark.anyio
-async def test_the_five_file_tools_are_complete_and_read_first() -> None:
-    """D-03: search, list, read, download and upload, and only the last one writes."""
+async def test_the_six_file_tools_are_complete_and_read_first() -> None:
+    """D-03 and TOOL-14: search, list, read, read_as_markdown, download and upload.
+
+    Only upload writes.
+    """
     async with Client(mcp, raise_exceptions=True) as client:
         tools = {tool.name: tool for tool in (await client.list_tools()).tools}
 
-    for name in ("files_search", "files_list", "files_read", "files_download", "files_upload"):
+    readers = (
+        "files_search",
+        "files_list",
+        "files_read",
+        "files_read_as_markdown",
+        "files_download",
+    )
+    for name in (*readers, "files_upload"):
         assert name in tools, f"{name} is part of the curated file set (D-03)"
         assert tools[name].output_schema is None, "structured_output=False (schema diet)"
 
-    for name in ("files_search", "files_list", "files_read", "files_download"):
+    for name in readers:
         annotations = tools[name].annotations
         assert annotations is not None
         assert annotations.read_only_hint is True, f"{name} only reads"

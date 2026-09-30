@@ -40,15 +40,24 @@ def test_a_pdf_without_a_text_layer_says_so_at_the_top() -> None:
     assert "## Page 1" in text
 
 
-def test_an_encrypted_pdf_is_refused_without_trying() -> None:
+def _encrypted_pdf(user_password: str) -> bytes:
     writer = pypdf.PdfWriter()
     writer.add_blank_page(width=200, height=200)
-    writer.encrypt(user_password="", owner_password="owner")
+    writer.encrypt(user_password=user_password, owner_password="owner")
     buffer = io.BytesIO()
     writer.write(buffer)
+    return buffer.getvalue()
 
+
+def test_an_owner_password_only_pdf_opens() -> None:
+    # Bank statements often carry an owner password and an empty user password.
+    text = pdf_conv.to_markdown(_encrypted_pdf(""))
+    assert "## Page 1" in text
+
+
+def test_a_pdf_with_a_user_password_is_refused() -> None:
     with pytest.raises(ToolError) as info:
-        pdf_conv.to_markdown(buffer.getvalue())
+        pdf_conv.to_markdown(_encrypted_pdf("secret"))
     assert "encrypted" in info.value.message
     assert info.value.reason != REASON_GUARD_TRIPPED
 

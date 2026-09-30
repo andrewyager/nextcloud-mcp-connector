@@ -16,7 +16,9 @@ def to_markdown(data: bytes) -> str:
     import pypdf
 
     reader = pypdf.PdfReader(io.BytesIO(data))
-    if reader.is_encrypted:
+    # An owner-password-only PDF (bank statements, for example) opens with the empty user
+    # password. Only a PDF that needs a real user password is refused.
+    if reader.is_encrypted and not reader.decrypt(""):
         raise ToolError(
             message="The PDF is encrypted.",
             hint=("Remove the password in a PDF tool and upload a copy, then read that one."),

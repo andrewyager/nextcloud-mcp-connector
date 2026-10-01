@@ -192,7 +192,7 @@ jobs:
           docker compose -f compose.exapp.yml exec -T --user www-data nextcloud             php occ app_api:app:list | tee exapp-list.txt
           grep -E 'mcp_connector .*\[enabled\]' exapp-list.txt
       - name: Install locked environment
-        run: uv sync --frozen
+        run: uv sync --frozen --extra documents
       - name: Canary and pair proofs of the kein-ki exclusion (GATE-02, GATE-03)
         # Every tool of the registry is called against a canary tagged kein-ki, in the normal
         # state and in three forced outages of the tag REPORT, and no answer may carry its

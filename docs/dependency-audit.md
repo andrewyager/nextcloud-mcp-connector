@@ -281,8 +281,21 @@ of its XML. For this reason the declared total is 50 MiB, and the converters hav
 caps. A sheet gives at most 256 columns and 10000 rows. A Word table gives at most 256 columns
 and 10000 rows. The Markdown of one file stops at 8388608 characters with a note.
 
+pypdf's own limits default to 75 MB per decoded stream. The converter lowers them to 4 MiB per
+stream and 1000 form XObjects per page, because pypdf parses a content stream operator by
+operator at tens of times its decoded size, and a page of drawing operators produces no text,
+so the output cap never sees it. A stream above the limit is a guard refusal.
+
+These guards bound what a file declares, not what a parser does with it. The conversion
+therefore runs in a worker process per document, started with a minimal environment that
+carries none of the server's secrets. The worker sets an address-space limit of 512 MiB on
+itself before it imports a parser (RLIMIT_AS, enforced on Linux), so a file that inflates past
+that gets a MemoryError and one refusal, not an out-of-memory server. The parent kills the
+worker after 30 seconds of wall clock. At most two conversions run at once, and the slot is
+taken before the download, so the bytes held for conversion are bounded as well.
+
 No converter touches the network. Every parser exception becomes one refusal that names the
-file and the format. Only the exception class is logged, at DEBUG.
+file and the format. Only the exception class is logged, at DEBUG, never the file name.
 
 Pillow arrives through python-pptx and is not used by this server; it is imported by
 python-pptx and decodes nothing here, because images are dropped without being opened. It is

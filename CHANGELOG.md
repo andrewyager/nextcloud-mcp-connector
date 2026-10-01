@@ -19,7 +19,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   is inflated, with at most 50 MiB declared in total. A PDF above 500 pages and a workbook above
   50 sheets are refused. A sheet or a Word table gives at most 256 columns and 10000 rows, and the
   Markdown of one file stops at 8388608 characters with a note. A PDF with only an owner password
-  opens; a PDF that needs a user password is refused (TOOL-14).
+  opens; a PDF that needs a user password is refused. Each conversion runs in its own worker
+  process with a 512 MiB address-space limit and a 30 second wall clock, at most two at once;
+  a PDF stream above 4 MiB decoded is refused before it is parsed (TOOL-14).
 
 ### Fixed
 

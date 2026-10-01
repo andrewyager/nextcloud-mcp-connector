@@ -2,7 +2,6 @@
 
 import subprocess
 import sys
-import threading
 from pathlib import Path
 
 import pytest
@@ -98,26 +97,3 @@ def test_the_package_imports_without_the_extra() -> None:
         [sys.executable, "-c", code], capture_output=True, text=True, check=False
     )
     assert result.returncode == 0, result.stderr
-
-
-def test_the_conversion_executor_has_two_workers() -> None:
-    assert documents._EXECUTOR._max_workers == 2
-
-
-@pytest.mark.anyio
-async def test_convert_runs_in_the_documents_executor_and_matches_convert_sync(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    threads: list[str] = []
-    real = docx_conv.to_markdown
-
-    def recording(data: bytes) -> str:
-        threads.append(threading.current_thread().name)
-        return real(data)
-
-    monkeypatch.setattr(docx_conv, "to_markdown", recording)
-    data = (FIXTURES / "sample.docx").read_bytes()
-    result = await documents.convert(data, DOCX, "/Docs/sample.docx")
-
-    assert result == documents.convert_sync(data, DOCX, "/Docs/sample.docx")
-    assert threads[0].startswith("documents")

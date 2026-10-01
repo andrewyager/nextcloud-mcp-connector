@@ -21,7 +21,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Markdown of one file stops at 8388608 characters with a note. A PDF with only an owner password
   opens; a PDF that needs a user password is refused. Each conversion runs in its own worker
   process with a 512 MiB address-space limit and a 30 second wall clock, at most two at once;
-  a PDF stream above 4 MiB decoded is refused before it is parsed (TOOL-14).
+  a PDF stream above 4 MiB decoded is refused before it is parsed. The tool asks the `kein-ki`
+  guard alongside the stat, as `files_read` does (TOOL-14).
 
 ### Fixed
 

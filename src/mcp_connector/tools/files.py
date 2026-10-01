@@ -447,6 +447,9 @@ async def read_as_markdown(
     early and ``next_offset`` is present only then. Offsets count characters of the Markdown.
     The whole file is downloaded and converted on every call; the server holds nothing between
     calls (D-20), and the caps in :mod:`mcp_connector.documents` bound the work.
+
+    The ``kein-ki`` guard is asked alongside the stat, exactly as in :func:`read`: a tagged
+    document answers like a path that does not exist, before its type is looked at (EXCL-01).
     """
     if offset < 0:
         raise ToolError(
@@ -460,7 +463,7 @@ async def read_as_markdown(
         )
 
     target = dav.safe_path(path)
-    info = await dav.stat(clients.client, clients.creds, target)
+    info = await _visible_stat(clients, target)
     if info["is_collection"]:
         raise ToolError(
             message=f"{target} is a folder, not a file.",

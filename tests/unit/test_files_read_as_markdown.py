@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import guard_routes
 import httpx
 import pytest
 import respx
@@ -43,6 +44,13 @@ def _propfind(*, length: int, content_type: str, collection: bool = False) -> st
   </d:response>
 </d:multistatus>
 """
+
+
+@pytest.fixture(autouse=True)
+def _no_kein_ki_tag(monkeypatch: pytest.MonkeyPatch) -> None:
+    """These tests cover the tool without any kein-ki tag; the guard states are tested in
+    test_files_exclusion.py and test_pair_equality_files.py."""
+    guard_routes.patch_untagged(monkeypatch)
 
 
 @pytest.fixture

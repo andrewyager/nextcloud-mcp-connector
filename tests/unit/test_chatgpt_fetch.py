@@ -146,7 +146,12 @@ def mock_capabilities(
 
 
 def search_body(
-    *, fileid: str = "4711", path: str = FILE_PATH, collection: bool = False, length: int = 27
+    *,
+    fileid: str = "4711",
+    path: str = FILE_PATH,
+    collection: bool = False,
+    length: int = 27,
+    content_type: str = "text/markdown",
 ) -> str:
     """One Multi-Status response of the fileid lookup, in the shape sabre sends it.
 
@@ -162,7 +167,7 @@ def search_body(
     <d:propstat>
       <d:prop>
         <d:displayname>{path.rsplit("/", 1)[-1]}</d:displayname>
-        <d:getcontenttype>text/markdown</d:getcontenttype>
+        <d:getcontenttype>{content_type}</d:getcontenttype>
         <d:getcontentlength>{length}</d:getcontentlength>
         <d:resourcetype>{resourcetype}</d:resourcetype>
         <oc:fileid>{fileid}</oc:fileid>
@@ -228,12 +233,10 @@ async def test_a_docx_file_id_points_at_files_read_as_markdown(clients: NcClient
     docx_path = "/Dokumente/Budget 2026.docx"
     docx_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     with respx.mock(assert_all_called=True) as mock:
+        # 27-09: the entry of the file id SEARCH replaces the stat, no PROPFIND.
         mock.route(method="SEARCH", url=DAV_ROOT).mock(
-            return_value=httpx.Response(207, text=search_body(path=docx_path))
-        )
-        mock.route(method="PROPFIND", url=f"{FILES_ROOT}{docx_path}").mock(
             return_value=httpx.Response(
-                207, text=stat_body(length=5000, path=docx_path, content_type=docx_type)
+                207, text=search_body(path=docx_path, content_type=docx_type, length=5000)
             )
         )
         with pytest.raises(ToolError) as info:

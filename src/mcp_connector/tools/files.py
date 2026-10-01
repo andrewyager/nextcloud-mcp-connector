@@ -357,14 +357,17 @@ async def read_as_markdown(
     if size > documents.MAX_SOURCE_BYTES:
         raise _source_too_large(target, size)
 
-    # The stat size is a claim, not a limit: the file can grow between PROPFIND and GET.
-    # Ask for one byte more than the cap, so a body above it is visible and refused.
-    data = await dav.get_range(
-        clients.client, clients.creds, target, limit=documents.MAX_SOURCE_BYTES + 1
-    )
-    if len(data) > documents.MAX_SOURCE_BYTES:
-        raise _source_too_large(target, None)
-    converted = await documents.convert(data, content_type, target)
+    # The slot is taken before the GET: it bounds the worker processes and the bytes held
+    # for them, so a burst of calls queues here instead of buffering a file per call.
+    async with documents.slot():
+        # The stat size is a claim, not a limit: the file can grow between PROPFIND and
+        # GET. Ask for one byte more than the cap, so a body above it is visible and refused.
+        data = await dav.get_range(
+            clients.client, clients.creds, target, limit=documents.MAX_SOURCE_BYTES + 1
+        )
+        if len(data) > documents.MAX_SOURCE_BYTES:
+            raise _source_too_large(target, None)
+        converted = await documents.convert(data, content_type, target)
     markdown = converted.markdown
     length = len(markdown)
     if offset > 0 and offset >= length:

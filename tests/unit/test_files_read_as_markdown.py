@@ -208,3 +208,41 @@ async def test_a_body_larger_than_the_stat_size_is_refused_after_download(
     assert get.calls.last.request.headers["Range"] == "bytes=0-100"
     assert info.value.reason == REASON_GUARD_TRIPPED
     assert "files_download" in info.value.hint
+
+
+@pytest.mark.anyio
+async def test_the_download_happens_inside_a_conversion_slot(
+    clients: NcClients, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The slot bounds the bytes held for conversion, so it must be taken before the GET
+    # and not only around the conversion.
+    from contextlib import asynccontextmanager
+
+    held = False
+    seen_during_get: list[bool] = []
+
+    @asynccontextmanager
+    async def slot():
+        nonlocal held
+        held = True
+        try:
+            yield
+        finally:
+            held = False
+
+    monkeypatch.setattr(documents, "slot", slot)
+    body = FIXTURE.read_bytes()
+
+    def on_get(_request: httpx.Request) -> httpx.Response:
+        seen_during_get.append(held)
+        return httpx.Response(200, content=body)
+
+    with respx.mock as mock:
+        mock.route(method="PROPFIND", url=DOC_URL).mock(
+            return_value=httpx.Response(207, text=_propfind(length=len(body), content_type=DOCX))
+        )
+        mock.route(method="GET", url=DOC_URL).mock(side_effect=on_get)
+        await files_tools.read_as_markdown(clients, path="/Docs/sample.docx")
+
+    assert seen_during_get == [True]
+    assert held is False

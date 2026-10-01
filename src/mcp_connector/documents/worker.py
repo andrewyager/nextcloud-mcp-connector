@@ -11,15 +11,20 @@ times the size of its XML and pypdf parses a content stream at tens of times its
 size, so a hostile file that passed the directory and stream guards still has a hard
 ceiling: it gets a MemoryError here, not an out-of-memory server. RLIMIT_AS is enforced on
 Linux, which is where the ExApp runs; on macOS the call is accepted and the kernel ignores
-it, so a developer's machine relies on the timeout alone.
+it, and Windows (stdio mode) has no ``resource`` module at all. Both rely on the timeout
+alone.
 """
 
 import json
-import resource
 import sys
 
 from ..errors import REASON_GUARD_TRIPPED, ToolError
 from . import convert_sync
+
+try:
+    import resource
+except ImportError:  # Windows has no rlimits; the wall clock in the parent still applies
+    resource = None
 
 __all__ = ["MAX_MEMORY_BYTES", "apply_memory_limit", "main"]
 
@@ -27,7 +32,9 @@ MAX_MEMORY_BYTES = 512 * 1024 * 1024
 
 
 def apply_memory_limit(limit: int = MAX_MEMORY_BYTES) -> bool:
-    """Cap this process's address space. ``False`` when the platform refuses the call."""
+    """Cap this process's address space. ``False`` when the platform cannot."""
+    if resource is None:
+        return False
     try:
         resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
     except (ValueError, OSError):

@@ -20,6 +20,7 @@ a slot before the download, so the bytes held for conversion are bounded too.
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
@@ -135,10 +136,21 @@ def _command() -> list[str]:
     return [sys.executable, "-m", WORKER_MODULE]
 
 
+#: What the worker needs to start and find the package, and nothing of the server's
+#: configuration or secrets. SYSTEMROOT: Python on Windows does not start without it.
+_PASSED_THROUGH = ("PATH", "PYTHONPATH", "SYSTEMROOT")
+
+
 def _environment() -> dict[str, str]:
-    # The parser process gets what it needs to find the interpreter and the package, and
-    # none of the server's configuration or secrets.
-    return {key: os.environ[key] for key in ("PATH", "PYTHONPATH") if key in os.environ}
+    return {key: os.environ[key] for key in _PASSED_THROUGH if key in os.environ}
+
+
+async def _kill(process) -> None:
+    """End the worker if it still runs. One that exited at the deadline is not an error."""
+    if process.returncode is None:
+        with contextlib.suppress(ProcessLookupError):
+            process.kill()
+    await process.wait()
 
 
 async def convert(data: bytes, content_type: str, name: str) -> Converted:
@@ -155,8 +167,7 @@ async def convert(data: bytes, content_type: str, name: str) -> Converted:
     try:
         stdout, _ = await asyncio.wait_for(process.communicate(header + data), TIMEOUT_SECONDS)
     except TimeoutError:
-        process.kill()
-        await process.wait()
+        await _kill(process)
         raise ToolError(
             message=f"Converting {name} took longer than {TIMEOUT_SECONDS:g} seconds.",
             hint=_TOO_EXPENSIVE_HINT,
@@ -164,9 +175,7 @@ async def convert(data: bytes, content_type: str, name: str) -> Converted:
         ) from None
     except BaseException:
         # Cancelled or failed while the worker runs: never leave it behind.
-        if process.returncode is None:
-            process.kill()
-            await process.wait()
+        await _kill(process)
         raise
 
     if process.returncode != 0:

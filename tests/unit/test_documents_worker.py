@@ -70,9 +70,11 @@ async def test_a_worker_that_does_not_finish_in_time_is_killed_and_refused(
     assert info.value.reason == REASON_GUARD_TRIPPED
     assert "longer than 0.5 seconds" in info.value.message
     assert "/Docs/a.docx" in info.value.message
-    pid = int(pid_file.read_text())
-    with pytest.raises(ProcessLookupError):
-        os.kill(pid, 0)
+    if sys.platform != "win32":
+        # os.kill(pid, 0) is a liveness probe on POSIX only.
+        pid = int(pid_file.read_text())
+        with pytest.raises(ProcessLookupError):
+            os.kill(pid, 0)
 
 
 @pytest.mark.anyio
@@ -137,6 +139,68 @@ def test_the_debug_log_names_the_exception_class_and_not_the_file(
     assert "ValueError" in caplog.text
     assert "/Docs/a.docx" not in caplog.text
     assert "detail" not in caplog.text
+
+
+def test_without_the_resource_module_the_limit_is_skipped_and_said_so(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Windows has no ``resource``; the worker must still run, bounded by the timeout alone.
+    monkeypatch.setattr(worker, "resource", None)
+    assert worker.apply_memory_limit() is False
+
+
+def test_the_worker_module_imports_without_the_resource_module() -> None:
+    code = (
+        "import sys\n"
+        "sys.modules['resource'] = None\n"
+        "from mcp_connector.documents import worker\n"
+        "assert worker.resource is None\n"
+    )
+    result = subprocess.run(  # noqa: S603 - fixed command
+        _python(code), capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_the_worker_environment_passes_systemroot_through_when_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Python on Windows does not start without SYSTEMROOT (WinError 10106).
+    monkeypatch.setenv("SYSTEMROOT", r"C:\Windows")
+    monkeypatch.setenv("APP_SECRET", "must-not-reach-the-parser")
+    env = documents._environment()
+    assert env["SYSTEMROOT"] == r"C:\Windows"
+    assert "APP_SECRET" not in env
+    monkeypatch.delenv("SYSTEMROOT")
+    assert "SYSTEMROOT" not in documents._environment()
+
+
+@pytest.mark.anyio
+async def test_killing_a_worker_that_just_exited_is_not_an_error() -> None:
+    class Exited:
+        returncode = 0
+
+        def kill(self) -> None:
+            raise ProcessLookupError
+
+        async def wait(self) -> int:
+            return 0
+
+    class Running:
+        returncode = None
+        killed = False
+
+        def kill(self) -> None:
+            self.killed = True
+            self.returncode = -9
+
+        async def wait(self) -> int:
+            return -9
+
+    await documents._kill(Exited())
+    running = Running()
+    await documents._kill(running)
+    assert running.killed
 
 
 @LINUX_ONLY

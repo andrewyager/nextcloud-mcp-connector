@@ -301,3 +301,34 @@ _._decode_payload
 # one outgoing key set request a run pays, and limit_sentence is what a green run does not
 # mean. All three left the list with the plan that reads them, exactly as the entry announced
 # it would. A whitelist entry that is no longer needed is a switched off check.
+
+# --- The measuring script of phase 25 (scripts/tag_spike.py) ----------------------------
+# Empty again, as announced: the helpers of plan 25-01 parked here left the list with the
+# block that calls them, the findings block of plan 25-01 task 2, the latency blocks of plan
+# 25-02 (THRESHOLD_SECONDS, WARMUP, RUNS_*, summarize) and the version matrix of plan 25-03
+# (SPIKE_BASE_URL, SPIKE_COMPOSE, wait_for_install).
+
+# --- The counter measurement of plan 25-05 (scripts/tag_spike.py) -----------------------
+# Empty again, as announced: plan 25-05 task 1 parked its pure helpers and constants here
+# (section C) before the blocks that call them existed. They left the list with the section
+# that calls them, block_vorfahren (section D) and gegenmessung (section E).
+
+# --- The tag query client of plan 26-01, called by plan 26-02 ---------------------------
+# Empty again, as announced: tagged_nodes left the list with plan 26-02, whose load_scope
+# calls it once per spelling of the exclusion tag, and is_collection left it with plan 27-01,
+# whose nextcloud/exclusion._active reads it into TagScope.has_folders (list_tags was never
+# here, the measuring script carries a function of the same name).
+
+# --- The guard core of phase 26, wired in by phase 27 ------------------------------------
+# Empty again, as announced: the one name parked here, TagScope.excludes, moved on to the
+# section below together with the helpers of plan 27-01, because it still waits for the same
+# callers, the family plans 27-02 to 27-06.
+
+# --- The withholding helpers of plan 27-01, wired in by plans 27-02 to 27-06 -------------
+# Empty again, as announced: plan 27-01 parked six names here before the tool families that
+# call them existed, and each left the list with the plan that calls it. excludes has its
+# callers in the unified_search screen (plan 27-03) and in talk.file_screen (plan 27-05);
+# paths_of_fileids, degraded_entry, file_refs and needs_paths are called by unified_search
+# (plan 27-03), talk.file_screen and the talk list answers call paths_of_fileids and
+# degraded_entry as well (plan 27-05), and unavailable_error is raised by fetch(file) (plan
+# 27-03) and by talk.one_room for a file conversation (plan 27-05).
